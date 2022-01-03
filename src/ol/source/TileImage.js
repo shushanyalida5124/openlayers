@@ -208,6 +208,7 @@ class TileImage extends UrlTile {
   getKey() {
     let key = super.getKey();
     if (!this.getInterpolate()) {
+      // 不使用插值
       key += ':disable-interpolation';
     }
     return key;
@@ -321,6 +322,7 @@ class TileImage extends UrlTile {
       !projection ||
       equivalent(sourceProjection, projection)
     ) {
+      // 不需要考虑sourceProjection和projection不相等的情况？
       return this.getTileInternal(
         z,
         x,
@@ -390,6 +392,7 @@ class TileImage extends UrlTile {
     const tileCoordKey = getKeyZXY(z, x, y);
     const key = this.getKey();
     if (!this.tileCache.containsKey(tileCoordKey)) {
+      // 没有缓存
       tile = this.createTile_(z, x, y, pixelRatio, projection, key);
       this.tileCache.set(tileCoordKey, tile);
     } else {

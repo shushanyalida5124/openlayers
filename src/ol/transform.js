@@ -179,6 +179,8 @@ export function translate(transform, dx, dy) {
 /**
  * Creates a composite transform given an initial translation, scale, rotation, and
  * final translation (in that order only, not commutative).
+ * 一般dx1，dy1为需转换图形的宽高，和dx2,dy2互为相反数，目的是先将需要转换的图形的中心平移至原点，再进行缩放和旋转，之后再将图形平移回去
+ * final指位移dx2,dy2的变形矩阵位于矩阵乘法的最右边？会最先生效，所以dx2,dy2为负数。
  * @param {!Transform} transform The transform (will be modified in place).
  * @param {number} dx1 Initial translation x.
  * @param {number} dy1 Initial translation y.
@@ -195,7 +197,7 @@ export function compose(transform, dx1, dy1, sx, sy, angle, dx2, dy2) {
   transform[0] = sx * cos;
   transform[1] = sy * sin;
   transform[2] = -sx * sin;
-  transform[3] = sy * cos;
+  transform[3] = sy * cos; 
   transform[4] = dx2 * sx * cos - dy2 * sx * sin + dx1;
   transform[5] = dx2 * sy * sin + dy2 * sy * cos + dy1;
   return transform;

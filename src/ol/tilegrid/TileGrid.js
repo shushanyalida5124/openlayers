@@ -434,15 +434,15 @@ class TileGrid {
    */
   getTileRangeForExtentAndZ(extent, z, opt_tileRange) {
     const tileCoord = tmpTileCoord;
-    this.getTileCoordForXYAndZ_(extent[0], extent[3], z, false, tileCoord);
+    this.getTileCoordForXYAndZ_(extent[0], extent[3], z, false, tileCoord); // 左上角
     const minX = tileCoord[1];
     const minY = tileCoord[2];
-    this.getTileCoordForXYAndZ_(extent[2], extent[1], z, true, tileCoord);
+    this.getTileCoordForXYAndZ_(extent[2], extent[1], z, true, tileCoord); // 右下角
     return createOrUpdateTileRange(
       minX,
-      tileCoord[1],
+      tileCoord[1], // maxX
       minY,
-      tileCoord[2],
+      tileCoord[2], // maxY
       opt_tileRange
     );
   }

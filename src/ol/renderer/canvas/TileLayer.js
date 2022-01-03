@@ -226,13 +226,14 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
     const tmpExtent = this.tmpExtent;
     const tmpTileRange = this.tmpTileRange_;
     this.newTiles_ = false;
+    // 便利显示瓦片
     for (let x = tileRange.minX; x <= tileRange.maxX; ++x) {
       for (let y = tileRange.minY; y <= tileRange.maxY; ++y) {
         const tile = this.getTile(z, x, y, frameState);
         if (this.isDrawableTile(tile)) {
           const uid = getUid(this);
           if (tile.getState() == TileState.LOADED) {
-            tilesToDrawByZ[z][tile.tileCoord.toString()] = tile;
+            tilesToDrawByZ[z][tile.tileCoord.toString()] = tile; // 将瓦片存入对象
             const inTransition = tile.inTransition(uid);
             if (
               !this.newTiles_ &&
@@ -268,7 +269,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
       }
     }
 
-    const canvasScale = tileResolution / viewResolution;
+    const canvasScale = tileResolution / viewResolution; // 若瓦片分辨率与视图分辨率不同，则需要缩放瓦片
 
     // set forward and inverse pixel transforms
     composeTransform(
@@ -296,6 +297,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
     makeInverse(this.inversePixelTransform, this.pixelTransform);
 
     // set scale transform for calculating tile positions on the canvas
+    // 计算瓦片在canvas上位置的缩放变换矩阵？
     composeTransform(
       this.tempTransform,
       width / 2,
@@ -306,7 +308,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
       -width / 2,
       -height / 2
     );
-
+    // width，height 瓦片宽高
     if (canvas.width != width || canvas.height != height) {
       canvas.width = width;
       canvas.height = height;
@@ -326,22 +328,24 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
 
     this.renderedTiles.length = 0;
     /** @type {Array<number>} */
+    // zooms? 层级数组，[0,1, 2, 3,...]
     let zs = Object.keys(tilesToDrawByZ).map(Number);
-    zs.sort(numberSafeCompareFunction);
+    zs.sort(numberSafeCompareFunction);  // 层级由小到大
 
     let clips, clipZs, currentClip;
     if (
       layerState.opacity === 1 &&
       (!this.containerReused ||
         tileSource.getOpaque(frameState.viewState.projection))
-    ) {
+    ) { // 图层完全不透明且容器不复用或者tileSource不透明
       zs = zs.reverse();
     } else {
       clips = [];
       clipZs = [];
     }
+    // 便利所有层级
     for (let i = zs.length - 1; i >= 0; --i) {
-      const currentZ = zs[i];
+      const currentZ = zs[i]; 
       const currentTilePixelSize = tileSource.getTilePixelSize(
         currentZ,
         pixelRatio,
@@ -349,22 +353,23 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
       );
       const currentResolution = tileGrid.getResolution(currentZ);
       const currentScale = currentResolution / tileResolution;
-      const dx = currentTilePixelSize[0] * currentScale * canvasScale;
+      const dx = currentTilePixelSize[0] * currentScale * canvasScale; // 瓦片宽度像素尺寸
       const dy = currentTilePixelSize[1] * currentScale * canvasScale;
       const originTileCoord = tileGrid.getTileCoordForCoordAndZ(
         getTopLeft(canvasExtent),
         currentZ
-      );
-      const originTileExtent = tileGrid.getTileCoordExtent(originTileCoord);
+      ); // 左上角瓦片瓦片坐标 [z, x, y]
+      const originTileExtent = tileGrid.getTileCoordExtent(originTileCoord); // 左上角瓦片extent
       const origin = applyTransform(this.tempTransform, [
         (tilePixelRatio * (originTileExtent[0] - canvasExtent[0])) /
-          tileResolution,
+          tileResolution, // 地理单位 / 分辨率 = 像素
         (tilePixelRatio * (canvasExtent[3] - originTileExtent[3])) /
           tileResolution,
-      ]);
+      ]); // 左上角瓦片左上角像素坐标经变换矩阵转换后的坐标
       const tileGutter =
         tilePixelRatio * tileSource.getGutterForProjection(projection);
-      const tilesToDraw = tilesToDrawByZ[currentZ];
+      const tilesToDraw = tilesToDrawByZ[currentZ]; // 当前层级需要绘制的瓦片对象 {key:value} —— {zxy:Tile}
+      // 便利当前层级所有瓦片
       for (const tileCoordKey in tilesToDraw) {
         const tile = /** @type {import("../../ImageTile.js").default} */ (
           tilesToDraw[tileCoordKey]
@@ -372,29 +377,31 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
         const tileCoord = tile.tileCoord;
 
         // Calculate integer positions and sizes so that tiles align
-        const xIndex = originTileCoord[1] - tileCoord[1];
-        const nextX = Math.round(origin[0] - (xIndex - 1) * dx);
+        const xIndex = originTileCoord[1] - tileCoord[1];   // 左上角瓦片与当前瓦片X坐标的差，即横向相差几块瓦片的宽度 的相反数
+        const nextX = Math.round(origin[0] - (xIndex - 1) * dx); // 瓦片右上角x坐标 四舍五入
         const yIndex = originTileCoord[2] - tileCoord[2];
         const nextY = Math.round(origin[1] - (yIndex - 1) * dy);
-        const x = Math.round(origin[0] - xIndex * dx);
+        const x = Math.round(origin[0] - xIndex * dx);  // 当前瓦片左上角x坐标
         const y = Math.round(origin[1] - yIndex * dy);
-        const w = nextX - x;
+        const w = nextX - x; // 瓦片宽度
         const h = nextY - y;
-        const transition = z === currentZ;
+        const transition = z === currentZ; // 当前视图展示的zoom是否等于当前便利循环的zoom
 
         const inTransition =
-          transition && tile.getAlpha(getUid(this), frameState.time) !== 1;
+          transition && tile.getAlpha(getUid(this), frameState.time) !== 1; // 若当前视图的zoom不等于当前便利的zoom且当前渲染的阿尔法值不为1，则瓦片处于过度中
         if (!inTransition) {
           if (clips) {
             // Clip mask for regions in this tile that already filled by a higher z tile
             context.save();
-            currentClip = [x, y, x + w, y, x + w, y + h, x, y + h];
+            currentClip = [x, y, x + w, y, x + w, y + h, x, y + h]; // 当前瓦片的[左，上，右，上， 右，下， 左，下]像素坐标
+            // 便利clips，若视图显示的zoom不等于当前的zoom且当前的zoom小于clip对应的zoom,则裁剪出当前瓦片对应的矩形区域
+            // 裁剪之后绘制图片只会显示裁剪区域的部分
             for (let i = 0, ii = clips.length; i < ii; ++i) {
               if (z !== currentZ && currentZ < clipZs[i]) {
                 const clip = clips[i];
                 context.beginPath();
                 // counter-clockwise (outer ring) for current tile
-                context.moveTo(currentClip[0], currentClip[1]);
+                context.moveTo(currentClip[0], currentClip[1]); 
                 context.lineTo(currentClip[2], currentClip[3]);
                 context.lineTo(currentClip[4], currentClip[5]);
                 context.lineTo(currentClip[6], currentClip[7]);
@@ -409,7 +416,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
             clips.push(currentClip);
             clipZs.push(currentZ);
           } else {
-            context.clearRect(x, y, w, h);
+            context.clearRect(x, y, w, h); // 清空瓦片对应的矩形部分
           }
         }
         this.drawTileImage(
